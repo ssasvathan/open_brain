@@ -5,15 +5,15 @@ A central place for the work knowledge scattered across an organisation's system
 ## Stored units
 
 **Artefact**:
-One natural unit of work, copied from a source system or written by the brain owner: a Jira issue with its comments and history, a whole chat thread, a wiki or decision-record page, a status report, the brain owner's own account of a meeting. The source of truth; never an output.
+One natural unit of work, copied faithfully (never summarised) from a source system, or written by the brain owner: a Jira issue with its comments and history, a whole chat thread, a wiki or decision-record page, a status report, the brain owner's own account of a meeting. The source of truth; never an output.
 _Avoid_: Thought, item, source item, record, document, note
 
 **Revision**:
-An immutable snapshot of an artefact's content as captured by one push from a collector. A new revision exists only when the content changed.
+An immutable snapshot of an artefact's content as recorded by one capture. A new revision exists only when the content or source fields changed.
 _Avoid_: Version, update
 
 **Synthesis**:
-Anything produced from artefacts rather than captured: a digest, an extracted risk or decision, a topic-page entry, a saved harness answer. It cites the artefacts it came from, and can be regenerated from them.
+Anything produced from artefacts rather than captured: a digest, an extracted risk or decision, a topic-page entry, a saved harness answer. It cites the artefacts it came from, and can be regenerated from them. A synthesis re-produced for the same purpose, such as a re-run of last week's digest, supersedes the earlier one rather than replacing it.
 _Avoid_: Derived item, insight, finding, note
 
 **Digest**:
@@ -24,9 +24,21 @@ _Avoid_: Summary, report
 A synthesis that makes one dated claim on a topic page. Entries are never rewritten; a later entry supersedes an earlier one.
 _Avoid_: Item, record
 
+**Capture**:
+One hand-off of artefacts or syntheses to the brain, by a single collector or the harness. Each item in it is accepted or rejected on its own, and each artefact in it becomes at most one new revision.
+_Avoid_: Push, upload, ingest, sync, batch
+
 **Topic page**:
 A named grouping of entries on one subject, such as a platform team's risk register or decisions log. It holds no content of its own.
 _Avoid_: Wiki page, report, document
+
+**Source field**:
+A piece of an artefact's state as its source system records it, such as a Jira issue's status or resolution or a decision page's status. Captured alongside the artefact's content, and part of its revision.
+_Avoid_: Metadata, property, attribute
+
+**Tag**:
+A label saying what an artefact or synthesis is about or what it contains, such as a topic, a risk or decision flag, or a person mentioned. The brain tags everything the same way; a collector may add its own tags, which are kept and marked as the collector's.
+_Avoid_: Label, category, classification
 
 ## Brain
 
@@ -39,7 +51,7 @@ The one person whose brain it is: their collectors write to it and they set its 
 _Avoid_: User, owner (alone), operator, admin
 
 **Collector**:
-One of the brain owner's routines that pushes artefacts or syntheses into a brain, such as a scheduled Slack scrape or a manual push of a colleague's digest. Every revision records its collector.
+One of the brain owner's routines that captures artefacts or syntheses into a brain, such as a scheduled Slack scrape or a manual capture of a colleague's digest. Every revision records its collector.
 _Avoid_: Workflow, scraper, connector, producer, feed, ingestor
 
 **Harness**:

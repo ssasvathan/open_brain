@@ -1,0 +1,8 @@
+# One brain service: captures stored at once, indexed by an in-process worker
+
+The brain runs as one long-lived service that exposes an MCP endpoint over Streamable HTTP on 127.0.0.1, with a bearer token and an `Origin` check, rather than being launched per harness session over stdio. A capture only validates each item, checks whether its content or source fields changed, and stores any new revision; a background worker inside the same service then chunks, embeds and tags new revisions and updates the search index, retrying failed steps with backoff and marking items it cannot index rather than losing them. We chose this because a single process is the only writer of the txtai index (which lives in one process's memory and would be clobbered by concurrent stdio processes), tagging with a local 4B-class model takes seconds per item so collectors must not wait on it, and a central brain later is the same endpoint on a shared host. The costs: new content becomes searchable shortly after a capture rather than immediately, the service must be running before a harness can use it, and Claude Desktop (which only launches stdio servers) needs a stdio-to-HTTP bridge, so Claude Code is the supported harness for the pilot.
+
+## Considered Options
+
+- **stdio server launched by each harness session:** one-line config and works in Claude Desktop, but every session starts its own process, so concurrent captures need cross-process locking of the index.
+- **Synchronous indexing on capture:** simplest, but captures wait on embedding and tagging, and one slow or failing tagging call blocks or fails the collector.
