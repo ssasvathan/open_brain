@@ -1,0 +1,4 @@
+# Locally installed agent skills
+.agents/
+.claude/skills/
+skills-lock.json
