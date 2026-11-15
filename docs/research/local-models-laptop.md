@@ -1,73 +1,158 @@
 # Local embedding and LLM models for a laptop pilot
 
-Research for [#7](https://github.com/ssasvathan/open_brain/issues/7) (map: [#2](https://github.com/ssasvathan/open_brain/issues/2)). Sources checked 2026-11-14. All benchmark numbers are as reported by the model owners on their own cards, not independently re-run.
+Research for [#7](https://github.com/ssasvathan/open_brain/issues/7) (map: [#2](https://github.com/ssasvathan/open_brain/issues/2)). Sources checked 2026-11-14. Benchmark numbers are the ones model owners report on their own cards. Nobody has re-run them independently.
+
+**Revision 2.** #7 was reopened with a standing constraint: no models from Chinese developers, and no fine-tunes derived from them. The first revision recommended `qwen3-embedding` and `qwen3.5` (Alibaba), so that recommendation is withdrawn. This revision:
+
+- names the developer, country and licence for every model;
+- checks each model card for a base model of Chinese origin;
+- assesses the pairing the user already tested hands-on, `nomic-embed-text` plus `gemma4:e4b` via Ollama (srnichols/OpenBrain `.env`), on the target hardware:
+  - the user's 2023 M3 MacBook with **32 GB** of unified memory (the target);
+  - the manager's second instance, probably a **16 GB** Apple Silicon machine (the floor);
+  - a home PC with a GTX 1070 Ti (8 GB VRAM).
+
+  8 GB machines are unsupported.
 
 ## Answer
 
-- **Embeddings, default:** `qwen3-embedding:0.6b` via Ollama, stored as `vector(1024)` in pgvector with an HNSW cosine index. Apache-2.0, 32K context, best MTEB English score of any sub-1B model checked (70.70).
-- **Embeddings, lighter fallback:** `nomic-embed-text` (v1.5, 137M params, 768d, Apache-2.0, 8K context). It is Ollama's most-pulled embedder and fine on a low-RAM machine, but scores clearly lower (MTEB 62.28, older benchmark version).
-- **Tagging and extraction LLM:** `qwen3.5:4b` (3.3 to 4.0 GB, Apache-2.0, tools, 256K context) with Ollama structured outputs (JSON schema in `format`). Step up to `qwen3.5:9b` (6.6 to 7.6 GB) or `gemma4:e4b` (Apache-2.0) if 4B extraction quality falls short.
-- **pgvector:** any of these fits. `vector` columns can be indexed with HNSW up to 2,000 dimensions. Keep embeddings at 2,000d or below (or use `halfvec` up to 4,000d), use `vector_cosine_ops`, and keep the default HNSW parameters at pilot scale.
-- **Cloud for comparison:** OpenAI `text-embedding-3-small` (1536d) and `-large` (3072d), and Google `gemini-embedding-2` (3072d, truncatable to 128 to 3072). Both 3072d defaults go over the 2,000d HNSW limit on `vector`, so request ≤2,000 dimensions (for example 1536) or use `halfvec`.
+Keep the pairing that has already been tested. Nothing that passes the provenance rule is clearly better for terse engineering text.
 
-One lock-in to note for an ADR: the embedding model and its dimension are fixed per table. Switching models means re-embedding everything, because the docs say to "use the same embedding model for both indexing and querying" ([Ollama embeddings](https://docs.ollama.com/capabilities/embeddings)).
+- **Embedder: `nomic-embed-text` (v1.5).** From Nomic AI (US), Apache-2.0, 137M parameters, 274 MB in Ollama.
+  - Store it as **`vector(768)`** with an **HNSW index using `vector_cosine_ops`** and the default parameters (m=16, ef_construction=64).
+  - **Chunk to 2K tokens or fewer**, because Ollama serves it with a 2K context (see [Context limits](#context-limits-and-chunking)).
+  - **Use its required task prefixes**: `search_document: ` on stored text and `search_query: ` on queries.
+- **Tagging and extraction LLM: `gemma4:e4b`.** From Google DeepMind (US), Apache-2.0. Ollama download is 6.6 GB, context 128K.
+  - Call it through **Ollama structured outputs** (a JSON Schema in `format`) with `temperature: 0` and thinking off.
+- **Challenger for the embedder bake-off: `embeddinggemma-2:270m`** (Google DeepMind, US, Apache-2.0, text-only, 304 MB). It has an 8K context and the same 768 dimensions, so the bake-off needs no schema change, only a re-embed. Neither the challenger nor anything else has evidence that it beats nomic on Slack/Jira-style text, so it does not displace the incumbent without the bake-off already planned on #2.
+- **Hardware fit:**
+  - **16 GB Apple Silicon (floor):** runs the pair comfortably.
+  - **32 GB (the user's target):** runs the pair with plenty of headroom, and has room for `gemma4:12b` if extraction quality ever falls short.
+  - **8 GB:** unsupported.
+  - **GTX 1070 Ti (8 GB VRAM):** holds the pair only with a modest context (keep `num_ctx` around 8K or lower). Confirm with `ollama ps` that the model is 100% on the GPU.
+- **LLM fallbacks:**
+  - Smaller: `granite4:micro` (IBM, US, Apache-2.0, 2.1 GB), `gemma4:e2b` (4.6 GB) or `phi4-mini` (Microsoft, US, MIT, 2.5 GB).
+  - Larger, on the 32 GB Mac: `gemma4:12b` (7.7 GB) or `ministral-3:8b` (Mistral AI, France, Apache-2.0, 6.0 GB).
+- **Embedder fallbacks:** `embeddinggemma:300m` (Google, Gemma terms, 2K context) and `granite-embedding:278m` (IBM, Apache-2.0, multilingual).
 
-## Embedding shortlist
+Lock-in to record in an ADR: the embedding model and its dimension are fixed per table. Ollama's docs say to "use the same embedding model for both indexing and querying" ([Ollama embeddings](https://docs.ollama.com/capabilities/embeddings)), so changing models means re-embedding everything. Choosing 768 dimensions keeps nomic, EmbeddingGemma 1 and 2, and Granite on the same column type.
 
-| Model (Ollama tag) | Params | Dims (MRL options) | Context | Licence | Reported quality | Notes |
-|---|---|---|---|---|---|---|
-| `qwen3-embedding:0.6b` | 0.6B | 1024 (32 to 1024) | 32K | Apache-2.0 | MTEB Eng v2 70.70; Multilingual 64.33 | Queries take the prefix `Instruct: {task}\nQuery:{query}`; documents need no prefix. The card says instructions add 1 to 5%. [card](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B) |
-| `qwen3-embedding:4b` / `:8b` | 4B / 8B | 2560 / 4096 | 32K | (not stated on the 0.6B card) | Eng v2 74.60 / 75.22 | Too heavy to keep loaded next to an LLM on a laptop, and the native dims exceed the 2,000d HNSW limit on `vector`. [card](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B) |
-| `embeddinggemma` | 300M | 768 (512/256/128) | 2048 | Gemma terms (gated) | MTEB Eng v2 69.67; Multilingual 61.15 | Prompts: `task: search result \| query: …` and `title: none \| text: …`. Does not support fp16 activations. [card](https://huggingface.co/google/embeddinggemma-300m) |
-| `embeddinggemma-2` | 270M to 740M | 768 (512/256/128) | 8K | not stated (card gated) | MTEB Multilingual v2 61.36 at 768d | New, multimodal, built for laptops and mobile. Text-only 270m is about 0.3 GB. [Ollama](https://ollama.com/library/embeddinggemma-2) |
-| `nomic-embed-text` (v1.5) | 137M | 768 (512/256/128/64) | 8192 | Apache-2.0 | MTEB 62.28 (older MTEB version; not comparable to v2 numbers) | Requires the `search_query:` / `search_document:` prefixes. 97.8M pulls. [card](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5) |
-| `bge-m3` | 567M | 1024 | 8192 | MIT | (not checked) | No query instruction needed. Also produces sparse and ColBERT vectors, though Ollama returns dense only. [card](https://huggingface.co/BAAI/bge-m3) |
-| `mxbai-embed-large`, `snowflake-arctic-embed`, `all-minilm`, `granite-embedding` | 22M to 568M | various | — | — | not evaluated here | Listed in the [Ollama embedding catalog](https://ollama.com/search?c=embedding). |
+## Provenance check
 
-Ollama `/api/embed` takes a string or an array (batching), returns L2-normalised vectors, accepts a `dimensions` integer for MRL truncation, and truncates over-long input by default (`truncate: true`) ([API ref](https://docs.ollama.com/api/embed), [guide](https://docs.ollama.com/capabilities/embeddings)). Set `truncate: false` if silently cut Slack threads would be a problem.
+Developer, country and licence come from each model card or Ollama page. The base-model check reads the `base_model` field in the card metadata (Hugging Face API) and searches the card text for "based on", "builds on" and "initialised from".
 
-**Caveat:** MTEB is a general benchmark. None of these numbers measure terse Slack/Jira business text. Treat the shortlist as a starting point, and test the top two against real acceptance questions from #2.
+### Allowed
 
-## Small LLM shortlist (tagging and entity extraction)
+| Model | Developer (country) | Licence | Base model / Chinese-origin check | Source |
+|---|---|---|---|---|
+| nomic-embed-text v1.5 | Nomic AI (US) | Apache-2.0 | Trained from Nomic's own `nomic-bert-2048`. No Chinese base. | [card](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5) |
+| EmbeddingGemma 2 | Google DeepMind (US/UK) | Apache-2.0 (Gemma 4 licence page) | "Builds upon … Gemma 4". No Chinese base. | [card](https://huggingface.co/google/embeddinggemma-2), [Ollama](https://ollama.com/library/embeddinggemma-2) |
+| EmbeddingGemma 300m | Google DeepMind (US/UK) | Gemma terms (gated, own use policy) | Gemma 3 with T5Gemma initialisation. No Chinese base. | [card](https://huggingface.co/google/embeddinggemma-300m) |
+| granite-embedding 30m / 278m, english-r2 | IBM (US) | Apache-2.0 | Encoders "trained internally at IBM Research" (RoBERTa/XLM-R-like; r2 is ModernBERT on IBM's GneissWeb). No Chinese base. | [30m](https://huggingface.co/ibm-granite/granite-embedding-30m-english), [278m](https://huggingface.co/ibm-granite/granite-embedding-278m-multilingual), [r2](https://huggingface.co/ibm-granite/granite-embedding-english-r2) |
+| snowflake-arctic-embed (v1: xs/s/m/l, m-long) | Snowflake (US) | Apache-2.0 | Bases: xs on all-MiniLM-L6-v2, s/m/l on Microsoft `intfloat/e5-*-unsupervised`, m-long on Nomic. No Chinese base. | [card](https://huggingface.co/Snowflake/snowflake-arctic-embed-l) |
+| Gemma 4 (e2b, e4b, 12b) | Google DeepMind (US/UK) | Apache-2.0 | Base `google/gemma-4-E4B` etc. | [card](https://huggingface.co/google/gemma-4-E4B-it) |
+| Granite 4.0 (micro 3B, micro-h, tiny-h 7B-A1B) | IBM (US) | Apache-2.0 | Fine-tuned from IBM's own Granite-4.0 base. | [card](https://huggingface.co/ibm-granite/granite-4.0-micro), [Ollama](https://ollama.com/library/granite4) |
+| Phi-4-mini-instruct (3.8B) | Microsoft (US) | MIT | Microsoft's own Phi-4 series. | [card](https://huggingface.co/microsoft/Phi-4-mini-instruct) |
+| Ministral 3 (3B/8B/14B) | Mistral AI (France) | Apache-2.0 | Base `mistralai/Ministral-3-*-Base-2512`. | [card](https://huggingface.co/mistralai/Ministral-3-3B-Instruct-2512) |
+| Llama 3.2 (1B/3B) | Meta (US) | Llama 3.2 Community Licence (gated, acceptable-use policy) | Meta's own base. Card gated, so not read in full. | [Ollama](https://ollama.com/library/llama3.2) |
 
-| Model (Ollama tag) | Size on disk | Context | Licence | Capabilities | Notes |
+### Excluded
+
+| Model | Why |
+|---|---|
+| `snowflake-arctic-embed2` (= arctic-embed-l-v2.0) | US developer, but the card says it "builds on [BAAI/bge-m3-retromae]". BAAI is Chinese, so this is a derived model. [card](https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0) |
+| snowflake-arctic-embed-m-v2.0 | The card says it "builds on [GTE-multilingual-base]" (Alibaba). Derived model. [card](https://huggingface.co/Snowflake/snowflake-arctic-embed-m-v2.0) |
+| `mxbai-embed-large` (Mixedbread) | The card names no base model and its metadata has none, so provenance can't be confirmed from the primary source. Excluded until Mixedbread confirms. [card](https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1) |
+| `bge-m3`, `qwen3-embedding`, `qwen3.5`, `qwen3`, and any GTE, DeepSeek, GLM, Kimi, Yi, MiniMax or InternLM model | Chinese developer. |
+
+`nomic-embed-text-v2-moe` (Nomic, Apache-2.0) is allowed: it is built on Nomic's `nomic-xlm-2048`, which traces to Meta's XLM-R. It was dropped anyway because its card states a 512-token maximum input ([card](https://huggingface.co/nomic-ai/nomic-embed-text-v2-moe)).
+
+## Embedding shortlist (provenance-clean)
+
+| Ollama tag | Params / download | Dims (MRL) | Context | Reported quality | Notes |
 |---|---|---|---|---|---|
-| `qwen3.5:4b` | 3.3 to 4.0 GB | 256K | Apache-2.0 | tools, thinking, vision | Released Feb 2026. **Thinking is on by default** and the `/nothink` switch is gone, so disable thinking for bulk extraction. [card](https://huggingface.co/Qwen/Qwen3.5-4B), [Ollama](https://ollama.com/library/qwen3.5) |
-| `qwen3.5:9b` | 6.6 to 7.6 GB | 256K | Apache-2.0 | tools, thinking, vision | Step up if a 16 GB+ laptop has headroom. [Ollama](https://ollama.com/library/qwen3.5) |
-| `qwen3.5:2b` / `:0.8b` | 2.7 to 3.1 / 1.2 to 1.3 GB | 256K | Apache-2.0 | same | For very constrained machines. [Ollama](https://ollama.com/library/qwen3.5) |
-| `gemma4:e4b` | 6.6 to 9.5 GB | 128K | Apache-2.0 | tools, thinking, vision, audio | 4.5B effective (8B with embeddings). Native function calling. Tech report published Jul 2026. [card](https://huggingface.co/google/gemma-4-E4B-it), [Ollama](https://ollama.com/library/gemma4) |
-| `gemma4:e2b` | 4.6 to 7.5 GB | 128K | Apache-2.0 | same | About 2.3B effective. [Ollama](https://ollama.com/library/gemma4) |
-| `qwen3:4b` / `:8b` | 2.5 / 5.2 GB | 256K / 40K | not stated on Ollama page | tools, thinking | Previous generation, last updated about 1 year ago. Superseded by qwen3.5. [Ollama](https://ollama.com/library/qwen3) |
+| **`nomic-embed-text`** (incumbent) | 137M / 274 MB | 768 (512/256/128/64) | 8192 on the card, **2K as served by Ollama** | MTEB 62.28 (v1 benchmark) | Prefixes are required: the card says the prompt "*must* include a task instruction prefix". The Ollama page's examples omit them, so check that the existing OpenBrain setup adds them. [card](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5), [Ollama](https://ollama.com/library/nomic-embed-text) |
+| **`embeddinggemma-2:270m`** (challenger) | 270M text / 304 MB (q8_0) | 768 (512/256/128) | 8,192 on the card. Ollama's tag list shows 256K, which conflicts with the card, so trust the card. | MTEB eng v2 68.46, multilingual v2 61.36 | Prefixes `task: search result \| query: …` and `title: {title or none} \| text: …`. **Never run in float16** (it returns NaN or silently degraded vectors). Use bf16 or fp32, or the q8 tag. [card](https://huggingface.co/google/embeddinggemma-2) |
+| `embeddinggemma:300m` | 300M / 622 MB (QAT q8 338 MB) | 768 (512/256/128) | 2048 | MTEB eng v2 69.67, multilingual v2 61.15 | Gemma terms rather than Apache-2.0. Same float16 caveat. [card](https://huggingface.co/google/embeddinggemma-300m) |
+| `granite-embedding:278m` / `:30m` | 278M / 563 MB; 30M / 63 MB | 768 / 384 | 512 (r1) | 30m: BEIR 49.1 | Trained without MS-MARCO (licence-clean data). The 8K ModernBERT r2 (149M, MTEB-v2 62.8) is not in the Ollama library. [Ollama](https://ollama.com/library/granite-embedding), [r2 card](https://huggingface.co/ibm-granite/granite-embedding-english-r2) |
+| `snowflake-arctic-embed:m-long` | 137M / 274 MB | 768 | 2K in Ollama | — | Nomic-based v1 model. No advantage over nomic itself. [Ollama](https://ollama.com/library/snowflake-arctic-embed) |
 
-For extraction, use Ollama **structured outputs**: pass a JSON Schema in `format` (`response_format` on the OpenAI-compatible endpoint), repeat the schema in the prompt, and set `temperature: 0` ([docs](https://docs.ollama.com/capabilities/structured-outputs)). Ollama's cloud does not support structured outputs, so this only works locally. Gemma 4's recommended sampling (temp 1.0, top_p 0.95, top_k 64) is for chat. For extraction, the structured-output guidance on temperature 0 is the more relevant one.
+**Is anything clearly better than nomic for terse engineering text?** Not on the evidence available.
 
-**Memory budget (inference, not measured):** a 16 GB laptop can keep the 0.6B embedder (about 0.6 GB) and a 4B LLM (about 3 to 4 GB) loaded together alongside Postgres. A 9B LLM or `gemma4:e4b` gets tight on 16 GB and is comfortable on 32 GB. No throughput figures were found in primary sources. Benchmark on the target laptop if ingest latency matters.
+- EmbeddingGemma 1 and 2 report higher MTEB English **v2** scores (68 to 70). nomic's 62.28 is on the older MTEB **v1** suite, and the two suites cannot be compared directly.
+- No card measures short, jargon-heavy Slack/Jira text.
+- The user has seen good results with nomic on their own data, and that is direct evidence.
+
+So nomic stays the default. `embeddinggemma-2:270m` is the one challenger worth the bake-off. It is the only Apache-2.0 option with a better published score and a longer usable context in Ollama. The bake-off is already on the map (#2, "Evaluating the acceptance cases").
+
+### Context limits and chunking
+
+- **nomic-embed-text in Ollama is limited to 2K tokens.** The Ollama page lists "2K context window" for every tag, even though the HF card supports 8192. `/api/embed` defaults to `truncate: true`, so anything longer is **cut silently** ([API ref](https://docs.ollama.com/api/embed)).
+- A long Confluence page or a long Jira comment thread must therefore be split before embedding. Chunks of about 500 to 1,000 tokens fit well inside the limit and also retrieve better than one vector per long page.
+- Send `truncate: false` so an over-long chunk fails loudly instead of being cut.
+- **Storage implication:** this matters for the unit-of-storage decision. The OpenBrain references store one unchunked row per thought (#5). Here, a raw source item needs either child chunk rows (item id, chunk index, text, `vector(768)`) or an item-level summary embedding. Short Jira tickets and chat messages fit in one chunk.
+- **Effect of the challenger:** `embeddinggemma-2` (8K) would allow larger chunks or whole tickets in one vector. It does not remove the need to chunk Confluence pages.
+
+## Small LLM shortlist (tagging and entity extraction, provenance-clean)
+
+| Ollama tag | Developer (country), licence | Download | Context | Notes |
+|---|---|---|---|---|
+| **`gemma4:e4b`** (incumbent) | Google DeepMind (US/UK), Apache-2.0 | 6.6 GB (QAT tag `e4b-it-qat` 6.1 GB) | 128K | About 4.5B effective parameters (8B including embeddings). The download includes vision and audio encoders. Native function calling. Thinking turns on only when `<\|think\|>` is in the system prompt, and with thinking off the E2B/E4B models emit no thought tags. [Ollama](https://ollama.com/library/gemma4) |
+| `gemma4:e2b` | same | 4.6 GB (QAT 4.3 GB) | 128K | About 2.3B effective. The low-RAM option within the same family. |
+| `gemma4:12b` | same | 7.7 GB (QAT 7.2 GB) | 256K | Step up on the 32 GB Mac. |
+| `granite4:micro` (3B dense) / `micro-h` | IBM (US), Apache-2.0 | 2.1 GB / 1.9 GB | 128K | Ollama lists "extraction", "classification" and function calling among intended uses. Smallest credible fallback. [Ollama](https://ollama.com/library/granite4) |
+| `phi4-mini` (3.8B) | Microsoft (US), MIT | 2.5 GB | 128K | Tools. Text only. [Ollama](https://ollama.com/library/phi4-mini) |
+| `ministral-3:3b` / `:8b` | Mistral AI (France), Apache-2.0 | 3.0 / 6.0 GB | 256K | "Native function calling and JSON outputting". Vision. [Ollama](https://ollama.com/library/ministral-3) |
+| `llama3.2:3b` | Meta (US), Llama 3.2 Community Licence | 2.0 GB | 128K | Older (2024). Custom licence. Listed only for completeness. |
+
+For extraction, use Ollama **structured outputs**:
+
+- Pass a JSON Schema in `format`, or `response_format` on the OpenAI-compatible endpoint.
+- Also put the schema in the prompt.
+- Set `temperature: 0`.
+
+Ollama's cloud "currently does not support structured outputs", so this works only locally ([docs](https://docs.ollama.com/capabilities/structured-outputs)). Gemma 4's recommended sampling (temperature 1.0, top_p 0.95, top_k 64) is meant for chat. For extraction, the structured-output advice of temperature 0 takes precedence.
+
+## Hardware fit and expected speed
+
+Hardware facts:
+
+- **M3 MacBook Pro (14-inch, Nov 2023):** the base M3 chip has 100 GB/s memory bandwidth and ships with 8 GB or 16 GB, configurable to 24 GB ([Apple](https://support.apple.com/117735)). The base M3 has no 32 GB option, so the user's 32 GB machine is probably an M3 Pro or M3 Max. Those have more bandwidth and would be faster than the estimates below, so the figures here are conservative.
+- **GTX 1070 Ti:** 8 GB GDDR5 on a 256-bit bus, 256 GB/s ([TechPowerUp review](https://www.techpowerup.com/review/msi-gtx-1070-ti-gaming/2.html)). Ollama supports it as compute capability 6.1, but cards in the 5.0 to 6.2 range need **NVIDIA driver 570 or newer** ([Ollama GPU docs](https://docs.ollama.com/gpu)).
+- Ollama uses Metal on Apple Silicon.
+
+Speeds below are **estimates, not measurements**. No primary source publishes tokens per second for these models on this hardware. Token generation is limited by memory bandwidth, so the ceiling is roughly bandwidth divided by the bytes of weights read per token. For `gemma4:e4b` at 4-bit that is about 2.5 to 3 GB per token, and real throughput usually lands at about half the ceiling.
+
+| Machine | `nomic-embed-text` + `gemma4:e4b`? | Expected LLM generation | Recommendation |
+|---|---|---|---|
+| Apple Silicon, 16 GB (floor: the manager's instance) | **Yes.** About 7 GB of models, plus Postgres (well under 1 GB at pilot scale), plus macOS and apps. Comfortable if heavy apps are closed during bulk ingest. | Ceiling about 35 to 40 tok/s at 100 GB/s, so roughly 15 to 25 tok/s in practice | Incumbent pair. If memory pressure appears, drop to `gemma4:e4b-it-qat` (6.1 GB) or `gemma4:e2b`. |
+| M3-family, 32 GB (target: the user's machine) | **Yes, with plenty of room.** | at least the figure above, and higher if the chip is an M3 Pro or Max | Incumbent pair. `gemma4:12b` (7.7 GB, about half the speed) is the step up if extraction quality falls short. |
+| 8 GB (unsupported) | No. | — | If a machine like this ever has to be used, try `gemma4:e2b` or `granite4:micro`. |
+| GTX 1070 Ti, 8 GB VRAM | **Tight.** 6.6 GB of weights plus the KV cache plus nomic (about 0.3 GB) is close to 8 GB. Ollama moves layers that don't fit to the CPU, which is much slower. | Ceiling about 85 to 100 tok/s, so roughly 40 to 60 tok/s if fully on the GPU | Use the QAT tag (`gemma4:e4b-it-qat`, 6.1 GB). Keep `num_ctx` around 8K or lower. Check `ollama ps` shows "100% GPU". Otherwise use `gemma4:e2b` or `granite4:micro`. The embedder can stay on the CPU without much cost. |
+
+**Per-item cost (estimate).** Tagging one item means reading about 1 to 2K tokens of prompt and writing about 100 to 200 tokens of JSON. That works out to a few seconds to around 15 seconds per item on an M3, and less on the 1070 Ti when fully on the GPU. Embedding with a 137M model is fast by comparison.
+
+A one-off backfill of thousands of items is an overnight job. Incremental re-scrapes are not a bottleneck.
+
+**Measure on the real machine before relying on any of these numbers.** `ollama run --verbose` prints prompt and generation rates.
 
 ## pgvector pairing
 
 From the [pgvector README](https://github.com/pgvector/pgvector) (v0.8.7):
 
-- Storage: `vector` and `halfvec` up to 16,000 dims. Indexing: HNSW and IVFFlat index `vector` **up to 2,000 dims**, `halfvec` up to 4,000, `bit` up to 64,000, and HNSW indexes `sparsevec` up to 1,000 non-zero elements.
-- Operators: `<=>` cosine, `<#>` negative inner product, `<->` L2. Ollama, OpenAI and Gemini at 3072d all return unit-length vectors, so cosine and inner product rank identically, and `vector_cosine_ops` is the safe default.
-- **HNSW** (recommended for the pilot): defaults `m=16`, `ef_construction=64`, `hnsw.ef_search=40`. Can be built on an empty table.
-- **IVFFlat:** "Create the index *after* the table has some data". Lists start at `rows/1000`, probes at `sqrt(lists)`. Little benefit at single-user pilot scale.
-- At pilot scale (thousands to low hundreds of thousands of chunks), an exact scan without an index is also viable. HNSW is the standard upgrade path.
+- Storage: `vector` up to 16,000 dims, at `4 * dims + 8` bytes each (768d is about 3 KB per row). Indexing: HNSW and IVFFlat index `vector` **up to 2,000 dims**, and `halfvec` up to 4,000.
+- Every model shortlisted here outputs 768 dimensions or fewer, so a plain **`vector(768)`** column and **HNSW with `vector_cosine_ops`** at the defaults (m=16, ef_construction=64, `hnsw.ef_search`=40) is enough. HNSW can be built on an empty table. IVFFlat should only be built after the table has data, and it gains little at pilot scale.
+- Ollama returns L2-normalised vectors ([API ref](https://docs.ollama.com/api/embed)), so cosine (`<=>`) and inner product rank results the same way.
+- Ollama's `dimensions` parameter allows MRL truncation (for example 512) if storage ever matters. The truncated dimension then becomes the locked one.
 
-Fit per model: qwen3-embedding-0.6B (1024), the nomic and gemma embedders (768) and bge-m3 (1024) index directly as `vector(n)`. qwen3-embedding-4B/8B, `text-embedding-3-large` and `gemini-embedding-*` at their 3072d default must be truncated to ≤2,000 (via the `dimensions` / `output_dimensionality` parameters) or stored as `halfvec`.
+## Cloud equivalents (unchanged; for comparison only)
 
-## Cloud equivalents
-
-| Provider model | Default dims | Shorten to | Max input | Reported MTEB | Source |
-|---|---|---|---|---|---|
-| OpenAI `text-embedding-3-small` | 1536 | `dimensions` param | 8192 | 62.3% | [OpenAI guide](https://developers.openai.com/api/docs/guides/embeddings) |
-| OpenAI `text-embedding-3-large` | 3072 | `dimensions` (for example 1024 or 256) | 8192 | 64.6% | same |
-| Google `gemini-embedding-2` | 3072 | 128 to 3072 (768/1536/3072 recommended), auto-normalised | 8192 | — | [Gemini docs](https://aistudio.google.com/docs/embeddings) |
-| Google `gemini-embedding-001` | 3072 | 128 to 3072, normalise manually | 2048 | — | same |
-
-OpenAI's MTEB figures use the older MTEB version, so they compare with nomic's 62.28, not with Qwen3/EmbeddingGemma "v2" scores. On cloud LLMs for extraction: any hosted frontier model will out-extract a local 4B. The trade-off is data governance (scraped org content leaving the laptop), which is a separate ticket on the map.
+OpenAI `text-embedding-3-small` (1536d) and `-large` (3072d), from OpenAI (US). Google `gemini-embedding-2` (3072d, truncatable from 128 up), from Google (US). Both 3072d defaults exceed the 2,000-dim HNSW limit on `vector`, so request 2,000 dimensions or fewer, or use `halfvec` ([OpenAI](https://developers.openai.com/api/docs/guides/embeddings), [Gemini](https://aistudio.google.com/docs/embeddings)). Whether data may leave the laptop at all is a data-governance question tracked elsewhere on the map.
 
 ## Open points
 
-- EmbeddingGemma 2's licence could not be read (gated HF card). Confirm it before choosing it.
-- Licences for qwen3-embedding 4B/8B were not confirmed on the card checked.
-- No primary-source laptop throughput numbers. Measure ingest speed on the target hardware.
+- **Bake-off:** compare `nomic-embed-text` and `embeddinggemma-2:270m` on the real acceptance questions from #2 and #3, with the same chunking for both.
+- **Prefixes:** confirm that the existing OpenBrain setup adds nomic's `search_document:` and `search_query:` prefixes. If it doesn't, adding them is a free quality gain, but every stored vector must then be re-embedded.
+- **Office Mac chip:** the base M3 has no 32 GB option, so confirm whether the machine is an M3 Pro or M3 Max. This only affects the speed estimates, not the recommendation.
+- **Measured speeds:** `gemma4:e4b` ingest rate on the M3 and the 1070 Ti is not yet measured.
+- **Ollama context for `embeddinggemma-2`:** the tag list says 256K but the card says 8K. Verify with `ollama show embeddinggemma-2:270m`.
+- **`mxbai-embed-large` provenance:** unconfirmed. Ask Mixedbread if it is ever wanted.
