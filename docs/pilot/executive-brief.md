@@ -4,6 +4,8 @@
 
 What we know about our platforms' work is spread across Jira, Slack, Confluence, status reports and people's heads. Some of us already run Claude routines that scrape these systems, but they write Markdown files to our own laptops. That makes knowledge hard to search, easy to lose and slow to turn into an answer. Questions like "what are our outstanding risks?" or "what did we actually decide about X?" still depend on someone's memory and an afternoon of digging.
 
+![Architecture](architecture.svg)
+
 ## What we're building
 
 **Open Brain** is a small, local service that becomes the place those scraping routines write to, in place of the Markdown files. You then ask it questions through Claude Code.
@@ -32,5 +34,3 @@ Real users install the brain on their own laptops, connect their existing scrapi
 ## Next milestone: Phase 2
 
 Connect the brain to the **bank-governed internal LLM gateway**, so it can use larger models for tagging and organising content. We'll evaluate them against the local models first. Because model endpoints are already configuration, this is a settings change, not a rebuild. A shared, central brain could come later still, using the same interface.
-
-![Architecture](architecture.svg)
