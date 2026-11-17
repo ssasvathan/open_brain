@@ -9,16 +9,28 @@ One natural unit of work, copied faithfully (never summarised) from a source sys
 _Avoid_: Thought, item, source item, record, document, note
 
 **Revision**:
-An immutable snapshot of an artefact's content as recorded by one capture. A new revision exists only when the content or source fields changed.
+One recorded state of an artefact. An artefact's revisions form its history, ranked by source time.
 _Avoid_: Version, update
 
 **Current revision**:
-An artefact's most recent revision: the one the brain describes the artefact by unless history is asked for.
+The top-ranked revision: the latest state of the artefact the brain knows of.
 _Avoid_: Latest version, head
+
+**Source time**:
+When, by the source system's account, an artefact was in the state a revision records. What "as of" means in an answer.
+_Avoid_: Updated-at, event time
+
+**Capture time**:
+When the brain received a capture: when the brain learned something, never when it happened.
+_Avoid_: Captured-at, ingest time
 
 **Synthesis**:
 Anything produced from artefacts rather than captured: a digest, an extracted risk or decision, a topic-page entry, a saved harness answer. It cites the artefacts it came from, and can be regenerated from them. A synthesis re-produced for the same purpose, such as a re-run of last week's digest, supersedes the earlier one rather than replacing it. The test is regeneration: what could be re-derived from the cited artefacts is a synthesis; what could not is an artefact.
 _Avoid_: Derived item, insight, finding, note
+
+**Synthesis key**:
+The named job a synthesis was made to do, chosen by its producer, such as one channel's digest for one week or one risk on a risk register. A later synthesis with the same synthesis key supersedes the earlier one.
+_Avoid_: Key (alone), slot, purpose, supersedes link
 
 **Citation**:
 A synthesis's reference to one artefact, recording which revision was current when the synthesis was stored. A citation is *unresolved* while the artefact is not yet in the brain, and *outdated* once the artefact has a newer revision than the one cited.
@@ -55,7 +67,7 @@ _Avoid_: Label, category, classification
 ## Brain
 
 **Brain**:
-One running instance of Open Brain, with its own store and config, belonging to exactly one brain owner.
+One running instance of Open Brain, with its own store and config, belonging to exactly one brain owner. It keeps the ledger: it records, ranks and retrieves by the same rules for every source system.
 _Avoid_: Instance, database, knowledge base
 
 **Brain owner**:
@@ -67,7 +79,7 @@ One of the brain owner's routines that captures artefacts or syntheses into a br
 _Avoid_: Workflow, scraper, connector, producer, feed, ingestor
 
 **Harness**:
-The AI client the brain owner asks questions through, such as Claude Code or Claude Desktop. A synthesis saved from an answer records the harness as its producer.
+The AI client the brain owner asks questions through, such as Claude Code or Claude Desktop. A synthesis saved from an answer records the harness as its producer. It does the reasoning: interpreting, comparing and summarising what the brain returns.
 _Avoid_: Client, assistant, agent, chatbot
 
 ## Organisation
