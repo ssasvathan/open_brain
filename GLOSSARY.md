@@ -85,12 +85,12 @@ _Avoid_: Client, assistant, agent, chatbot
 ## Organisation
 
 **Platform team**:
-An organisational unit whose work a brain follows, such as the Kafka or Flink team. Stakeholders, consumers and other people appear only as people in artefacts, never as platform teams.
+An organisational unit whose work a brain follows, such as the Kafka or Flink team. A platform team exists in a brain once a collector credits an artefact to it; the brain keeps no list of its own. Stakeholders, consumers and other people appear only as people in artefacts, never as platform teams.
 _Avoid_: Team, project, squad
 
-**Assigned platform team**:
-The platform team a source location is assigned to, if any. A source location has at most one; a cross-functional location has none.
-_Avoid_: Owner, owning team
+**Credited platform team**:
+The platform team a collector credits an artefact to, if any. An artefact has at most one; a cross-functional artefact, such as a thread in a shared leads channel, has none. The latest capture's credit stands, and changing it never creates a revision. A synthesis has no credited platform team of its own: its teams are those of the artefacts it cites.
+_Avoid_: Owner, owning team, assigned platform team
 
 **Source location**:
 The container an artefact lives in inside its source system, such as a Jira project, a Slack channel, or a wiki space.
