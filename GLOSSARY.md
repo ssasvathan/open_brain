@@ -5,16 +5,28 @@ A central place for the work knowledge scattered across an organisation's system
 ## Stored units
 
 **Artefact**:
-One natural unit of work, copied faithfully (never summarised) from a source system, or written by the brain owner: a Jira issue with its comments and history, a whole chat thread, a wiki or decision-record page, a status report, the brain owner's own account of a meeting. The source of truth; never an output.
+One natural unit of work, copied faithfully (never summarised) from a source system, or written by the brain owner: a Jira issue with its comments and history, a whole chat thread, a wiki or decision-record page, a status report, the brain owner's own account of a meeting. The source of truth; never an output. Anything that holds knowledge no other artefact contains, such as the brain owner's own judgement, is an artefact even when it links to the artefacts that prompted it.
 _Avoid_: Thought, item, source item, record, document, note
 
 **Revision**:
 An immutable snapshot of an artefact's content as recorded by one capture. A new revision exists only when the content or source fields changed.
 _Avoid_: Version, update
 
+**Current revision**:
+An artefact's most recent revision: the one the brain describes the artefact by unless history is asked for.
+_Avoid_: Latest version, head
+
 **Synthesis**:
-Anything produced from artefacts rather than captured: a digest, an extracted risk or decision, a topic-page entry, a saved harness answer. It cites the artefacts it came from, and can be regenerated from them. A synthesis re-produced for the same purpose, such as a re-run of last week's digest, supersedes the earlier one rather than replacing it.
+Anything produced from artefacts rather than captured: a digest, an extracted risk or decision, a topic-page entry, a saved harness answer. It cites the artefacts it came from, and can be regenerated from them. A synthesis re-produced for the same purpose, such as a re-run of last week's digest, supersedes the earlier one rather than replacing it. The test is regeneration: what could be re-derived from the cited artefacts is a synthesis; what could not is an artefact.
 _Avoid_: Derived item, insight, finding, note
+
+**Citation**:
+A synthesis's reference to one artefact, recording which revision was current when the synthesis was stored. A citation is *unresolved* while the artefact is not yet in the brain, and *outdated* once the artefact has a newer revision than the one cited.
+_Avoid_: Reference, source, link, stale citation
+
+**Superseded**:
+Said of a synthesis or entry that a later one, made for the same purpose, has replaced. It is kept but no longer current. Artefacts are never superseded; they gain revisions instead, and a synthesis never supersedes an artefact.
+_Avoid_: Replaced, deleted, obsolete, stale
 
 **Digest**:
 A synthesis summarising a time window, such as a week of one Slack channel.
@@ -33,7 +45,7 @@ A named grouping of entries on one subject, such as a platform team's risk regis
 _Avoid_: Wiki page, report, document
 
 **Source field**:
-A piece of an artefact's state as its source system records it, such as a Jira issue's status or resolution or a decision page's status. Captured alongside the artefact's content, and part of its revision.
+A named value the source system shows as a labelled field beside an artefact's content, such as a Jira issue's status, priority or resolution, or a decision page's status. Never read out of the content itself. Which source fields exist varies by source system and by what the collector sends. Captured alongside the artefact's content, and part of its revision.
 _Avoid_: Metadata, property, attribute
 
 **Tag**:
