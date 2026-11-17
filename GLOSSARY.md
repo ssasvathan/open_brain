@@ -29,7 +29,7 @@ Anything produced from artefacts rather than captured: a digest, an extracted ri
 _Avoid_: Derived item, insight, finding, note
 
 **Synthesis key**:
-The named job a synthesis was made to do, chosen by its producer, such as one channel's digest for one week or one risk on a risk register. A later synthesis with the same synthesis key supersedes the earlier one.
+The named job a synthesis was made to do, chosen by the collector or harness that captures it, such as one channel's digest for one week or one risk on a risk register. A later synthesis with the same synthesis key supersedes the earlier one.
 _Avoid_: Key (alone), slot, purpose, supersedes link
 
 **Citation**:
@@ -45,7 +45,7 @@ A synthesis summarising a time window, such as a week of one Slack channel.
 _Avoid_: Summary, report
 
 **Entry**:
-A synthesis that makes one dated claim on a topic page. Entries are never rewritten; a later entry supersedes an earlier one.
+A synthesis that makes one dated claim on a topic page, dated by the latest source time among the artefacts it cites. Entries are never rewritten; a later entry supersedes an earlier one.
 _Avoid_: Item, record
 
 **Capture**:
@@ -53,7 +53,7 @@ One hand-off of artefacts or syntheses to the brain, by a single collector or th
 _Avoid_: Push, upload, ingest, sync, batch
 
 **Topic page**:
-A named grouping of entries on one subject, such as a platform team's risk register or decisions log. It holds no content of its own.
+A running list on one subject that the brain owner wants kept, such as outstanding risks or decisions made, built from the entries saved to it. Reading a topic page means reading its current entries; it has no text of its own. A topic page is about a subject, not a platform team, so one entry on it can concern several teams.
 _Avoid_: Wiki page, report, document
 
 **Source field**:
@@ -79,7 +79,7 @@ One of the brain owner's routines that captures artefacts or syntheses into a br
 _Avoid_: Workflow, scraper, connector, producer, feed, ingestor
 
 **Harness**:
-The AI client the brain owner asks questions through, such as Claude Code or Claude Desktop. A synthesis saved from an answer records the harness as its producer. It does the reasoning: interpreting, comparing and summarising what the brain returns.
+The AI client the brain owner asks questions through, such as Claude Code or Claude Desktop. A synthesis saved from an answer records the harness where a capture would otherwise record its collector. It does the reasoning: interpreting, comparing and summarising what the brain returns.
 _Avoid_: Client, assistant, agent, chatbot
 
 ## Organisation
