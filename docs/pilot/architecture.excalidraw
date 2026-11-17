@@ -1040,9 +1040,9 @@
   {
    "id": "e29",
    "type": "rectangle",
-   "x": 880,
+   "x": 862,
    "y": 188,
-   "width": 240,
+   "width": 268,
    "height": 40,
    "angle": 0,
    "strokeColor": "#102a43",
@@ -1069,7 +1069,7 @@
   {
    "id": "e30",
    "type": "text",
-   "x": 892,
+   "x": 876,
    "y": 197,
    "width": 259,
    "height": 20,
