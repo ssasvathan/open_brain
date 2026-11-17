@@ -9,7 +9,7 @@ One natural unit of work, copied faithfully (never summarised) from a source sys
 _Avoid_: Thought, item, source item, record, document, note
 
 **Revision**:
-One recorded state of an artefact. An artefact's revisions form its history, ranked by source time.
+One recorded state of an artefact. An artefact's revisions form its history, ranked by source time. Immutable; a new one exists only when the content or source fields changed.
 _Avoid_: Version, update
 
 **Current revision**:
@@ -33,7 +33,7 @@ The named job a synthesis was made to do, chosen by its producer, such as one ch
 _Avoid_: Key (alone), slot, purpose, supersedes link
 
 **Citation**:
-A synthesis's reference to one artefact, recording which revision was current when the synthesis was stored. A citation is *unresolved* while the artefact is not yet in the brain, and *outdated* once the artefact has a newer revision than the one cited.
+A synthesis's reference to one artefact, recording which revision was current when the synthesis was stored. A citation is *unresolved* while the artefact is not yet in the brain, and *outdated* once the artefact has a revision with a later source time than the one cited.
 _Avoid_: Reference, source, link, stale citation
 
 **Superseded**:
