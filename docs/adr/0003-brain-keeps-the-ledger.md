@@ -13,6 +13,7 @@ A brain records, ranks and retrieves by rules that are the same for every source
 - **Read-time summaries or a diff option on `fetch`:** rejected. The harness fetches the revisions and compares them itself.
 - **Rejecting captures older than the current revision:** rejected. They take their place in the artefact's history by source time.
 - **Recency boost in search ranking:** rejected. Newer is not more current; date filters keep time explicit.
+- **The brain's worker updating topic pages at capture time** (gemma4:e4b judging whether a new artefact changes an entry): rejected. Entries come from the harness, with the brain owner's consent, or from a collector that captures entries.
 
 ## Consequences
 
